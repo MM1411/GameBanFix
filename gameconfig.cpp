@@ -1,6 +1,5 @@
 #include "gameconfig.h"
 #include "addresses.h"
-#include "khook.hpp"
 
 CGameConfig::CGameConfig(const std::string& gameDir, const std::string& path)
 {
@@ -159,9 +158,16 @@ void* CGameConfig::ResolveSignature(const char* name)
             return nullptr;
         }
 
-        std::string pattern = HexToPattern(signature);
+        size_t iLength = 0;
+        byte* pSignature = HexToByte(signature, iLength);
+        if (!pSignature) return nullptr;
 
-        address = KHook::LookupSignature((*module)->m_base, (*module)->m_size, pattern.c_str());
+        int error;
+
+        address = (*module)->FindSignature(pSignature, iLength, error);
+
+        if (error == SIG_FOUND_MULTIPLE)
+            Panic("!!!!!!!!!! Signature for %s occurs multiple times! Using first match but this might end up crashing!\n", name);
     }
 
     if (!address)
@@ -185,30 +191,50 @@ std::string CGameConfig::GetDirectoryName(const std::string& directoryPathInput)
     return "";
 }
 
-std::string CGameConfig::HexToPattern(const char* src)
+int CGameConfig::HexStringToUint8Array(const char* hexString, uint8_t* byteArray, size_t maxBytes)
 {
-    std::string pattern;
-
-    for (const char* p = src; *p;)
+    if (!hexString)
     {
-        if (p[0] == '\\' && (p[1] == 'x' || p[1] == 'X') && p[2] && p[3])
+        printf("Invalid hex string.\n");
+        return -1;
+    }
+
+    size_t hexStringLength = strlen(hexString);
+    size_t byteCount = hexStringLength / 4; // Each "\\x" represents one byte.
+
+    if (hexStringLength % 4 != 0 || byteCount == 0 || byteCount > maxBytes)
+    {
+        printf("Invalid hex string format or byte count.\n");
+        return -1; // Return an error code.
+    }
+
+    for (size_t i = 0; i < hexStringLength; i += 4)
+    {
+        if (sscanf(hexString + i, "\\x%2hhX", &byteArray[i / 4]) != 1)
         {
-            char byteStr[3] = { p[2], p[3], '\0' };
-
-            if (!pattern.empty()) pattern += ' ';
-
-            if (strcmp(byteStr, "2A") == 0 || strcmp(byteStr, "2a") == 0) pattern += '?';
-            else
-                pattern += byteStr;
-
-            p += 4;
-        }
-        else
-        {
-            pattern += *p;
-            p++;
+            printf("Failed to parse hex string at position %zu.\n", i);
+            return -1; // Return an error code.
         }
     }
 
-    return pattern;
+    return byteCount; // Return the number of bytes successfully converted.
+}
+
+byte* CGameConfig::HexToByte(const char* src, size_t& length)
+{
+    if (!src || strlen(src) <= 0)
+    {
+        Error("Invalid hex string\n");
+        return nullptr;
+    }
+
+    length = strlen(src) / 4;
+    uint8_t* dest = new uint8_t[length];
+    int byteCount = HexStringToUint8Array(src, dest, length);
+    if (byteCount <= 0)
+    {
+        Error("Invalid hex format %s\n", src);
+        return nullptr;
+    }
+    return (byte*)dest;
 }

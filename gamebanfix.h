@@ -10,7 +10,7 @@
 #include "networksystem/inetworkserializer.h"
 #include "edict.h"
 #include "playerslot.h"
-#include "khook.hpp"
+#include <sh_vector.h>
 
 #ifdef AMBUILD
 #include "version_gen.h"

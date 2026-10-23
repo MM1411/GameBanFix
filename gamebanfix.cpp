@@ -2,7 +2,6 @@
 #include "gamebanfix.h"
 #include "gameconfig.h"
 #include "detours.h"
-#include "khook_helpers.h"
 #include "utils/module.h"
 #include "schemasystem/schemasystem.h"
 #include <keyvalues.h>
@@ -11,8 +10,6 @@
 CSchemaSystem* g_pSchemaSystem2 = nullptr;
 IVEngineServer2* g_pEngineServer2 = nullptr;
 CGameConfig* g_GameConfig = nullptr;
-
-bool g_bRequiredInitLoaded = true;
 
 GameBanFix g_Plugin;
 
@@ -83,9 +80,7 @@ bool GameBanFix::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bo
         return false;
     }
 
-    InitKHooks();
-
-    if (!g_bRequiredInitLoaded)
+    if (!InitDetours(g_GameConfig))
     {
         snprintf(error, maxlen, "One or more address lookups failed, please refer to startup logs for more information");
         return false;
@@ -94,7 +89,12 @@ bool GameBanFix::Load(PluginId id, ISmmAPI* ismm, char* error, size_t maxlen, bo
     return true;
 }
 
-bool GameBanFix::Unload(char* error, size_t maxlen) { return true; }
+bool GameBanFix::Unload(char* error, size_t maxlen)
+{
+    FlushAllDetours();
+
+    return true;
+}
 
 bool GameBanFix::Pause(char* error, size_t maxlen) { return true; }
 

@@ -18,10 +18,9 @@
  */
 
 #pragma once
-#include "addresses.h"
-#include "khook.hpp"
+#include "cdetour.h"
 
-void InitKHooks();
+bool InitDetours(CGameConfig* gameConfig);
+void FlushAllDetours();
 
-KHook::Return<void> Detour_GameSystem_Think_CheckSteamBan();
-KHook::Return<void> Detour_GameSystem_Think_CheckSteamBan_Post();
+void FASTCALL Detour_GameSystem_Think_CheckSteamBan();
